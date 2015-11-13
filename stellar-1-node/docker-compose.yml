@@ -1,0 +1,65 @@
+
+stellar-postgresql:
+  image: stellar/stellar-core-state
+  env_file:
+    - "stellar.env"
+  ports:
+    - "5432:5432"
+
+stellar-node:
+  image: stellar/stellar-core
+  volumes_from:
+    - stellar-postgresql
+  volumes:
+    - /volumes/main/cores:/cores
+    - /volumes/main/logs:/logs
+  env_file:
+    - "stellar.env"
+  ports:
+    - "11625:11625"
+    - "11626:11626"
+  command: /start main fresh forcescp
+
+horizon-postgresql:
+  image: postgres:9.4
+  environment:
+    - POSTGRES_PASSWORD=password
+    - POSTGRES_USER=horizon
+  ports:
+    - "5433:5432"
+  command: postgres
+
+horizon-importer:
+  build: "../horizon-importer"
+  links:
+    - horizon-postgresql
+    - stellar-postgresql
+    - stellar-node
+  #command: /bin/bash -c "sleep 3600"
+
+horizon-api:
+  build: "../horizon-api"
+  links:
+    - horizon-postgresql
+    - stellar-postgresql
+    - stellar-node
+  ports:
+    - "8000:8000"
+    - "8001:8001"
+  #command: /bin/bash -c "sleep 3600"
+horizon-laboratory:
+  build: "../horizon-laboratory"
+  environment:
+    - HORIZON_API_HOST=dockerhost
+    - HORIZON_API_PORT=8000
+  ports:
+    - "3000:3000"
+    - "3001:3001"
+horizon-explorer:
+  build: "../horizon-explorer"
+  environment:
+    - HORIZON_API_HOST=dockerhost
+    - HORIZON_API_PORT=8000
+  ports:
+    - "7000:7000"
+    - "35729:35729"
